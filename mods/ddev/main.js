@@ -5,9 +5,12 @@
 // then the rest. Click a project's name to see what `ddev describe` says about it.
 // Data comes from `ddev list -j` (and `ddev describe <name> -j` for the open project),
 // polled gently while a copy is open.
+//   herdr-app do ddev.add-button           a DDEV button in the tab bar (see setup.js)
+//   herdr-app do ddev.remove-button        take it away again
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { exec, focused, notify, theme, checking, props } from "herdr";
+import { exec, focused, notify, theme, checking, props, nextCommand } from "herdr";
+import { addButton, removeButton } from "./setup.js";
 
 const POLL = 10000;
 const START_TIMEOUT = 600000; // exec's cap: ddev start can pull images
@@ -51,6 +54,26 @@ export default class Ddev extends View {
     if (checking()) return;
     this.refresh(cx);
     cx.timer.every(POLL, (cx) => { this.refresh(cx); this.loadDetail(cx); });
+    // Key and `herdr-app do ddev.<command>` commands reach the shown copies.
+    cx.spawn(async (cx) => {
+      for (;;) {
+        const c = await nextCommand();
+        if (c === "add-button" || c === "remove-button") this.setup(c, cx);
+      }
+    });
+  }
+
+  // The tab bar button: see setup.js.
+  setup(c, cx) {
+    cx.spawn(async (cx) => {
+      const wait = (ms) => new Promise((done) => cx.timer.after(ms, () => done()));
+      try {
+        const said = await (c === "add-button" ? addButton : removeButton)(wait);
+        notify({ title: "DDEV", body: said, level: "success", timeout: 6000 });
+      } catch (err) {
+        notify({ title: "DDEV", body: String(err?.message ?? err), level: "error" });
+      }
+    });
   }
 
   refresh(cx) {

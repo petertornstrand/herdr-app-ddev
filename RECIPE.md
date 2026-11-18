@@ -43,6 +43,16 @@ describe info). Rows with no value are left out.
 - `ddev list -j` is polled every 10 seconds and, with a describe view open,
   `ddev describe <name> -j` too. Nothing is polled by `init()` during `herdr-app check`
   (guard with `checking()`).
+- `herdr-app do ddev.add-button` (delivered through `nextCommand()`, so a copy of the mod
+  must be shown) clones the read-only `tabs` mod as `tabs-ddev` with `mod.clone` and
+  patches it: `"ddev"` joins the `enabled` panels and a `panelButton("ddev", "DDEV",
+  "mods/ddev/icon.svg")` follows the Changes button. It writes `layouts/main-ddev.json`
+  from `layouts/main.json` with the tab bar block pointing at `tabs-ddev` and a block
+  `{ id: "ddev", content: { mod: "ddev" } }` added to the `panel-body` stack, remembers
+  the layout it came from in `data/ddev/previous-layout.txt` and runs `layout.switch`.
+  `ddev.remove-button` switches back, waits 500 ms, then deletes the layout file, the
+  `tabs-ddev` folder and the remembered layout. Both are safe to run twice and report
+  with a toast.
 - If `ddev` fails, the body shows the error in `ansi1`. A failing describe shows its
   error the same way.
 
@@ -50,6 +60,10 @@ describe info). Rows with no value are left out.
 
 - `mods/ddev/mod.json`: `{ "place": "none", "title": "DDEV", "overlay": { "kind": "popup",
   "at": "top", "offset": 40, "width": 480, "height": 560 } }`.
+- `mods/ddev/icon.svg`: a 16 px stroked database cylinder (three stacked bands), `stroke="#000"`
+  so Herdr tints it with the text color.
+- `mods/ddev/setup.js`: `addButton(wait)` / `removeButton(wait)` and the pure `patchTabs()` and
+  `patchLayout()`, using `fs/promises` and `run("mod.clone" | "layout.switch")`.
 - `mods/ddev/main.js`: one `View` subclass. `gpui-kit` (`View`, `div`, `svg`), `gpui-base`
   (`v_flex`, `h_flex`) and `herdr` (`exec`, `focused`, `notify`, `theme`, `checking`,
   `props`). Scrolling lists use `.id(...).flex_1().min_h(0).overflow_y_scrollbar()`.
@@ -70,7 +84,12 @@ describe info). Rows with no value are left out.
   explicit height (560); without one the scroll area collapses to the header. In a pane
   use `size_full()`.
 - `svg` is exported by `gpui-kit`, not `herdr`.
-- `mod.open` toggles: calling it again closes the popup.
+- `mod.open` toggles: calling it again closes the popup. A popup can also survive a layout
+  switch, so check `herdr-app status` before calling it again.
+- `<mod>.<command>` only reaches shown copies: with no DDEV popup or pane open, `ddev.add-button`
+  answers "unknown command".
+- `main` and `tabs` are replaced on every Herdr start, which is why the button lives in clones;
+  the patch throws a readable error if their text no longer matches.
 - `dbinfo.published_port` is `-1` while the project is stopped: hide it.
 - Never show `dbinfo.password`.
 - `ddev describe` fails for a project whose folder lost its `.ddev/config.yaml`; show the
@@ -90,3 +109,6 @@ describe info). Rows with no value are left out.
   returns to the list; a stopped project shows no host port; a project without
   `.ddev/config.yaml` shows ddev's error.
 - No database password appears anywhere.
+- With a DDEV popup open, `herdr-app do ddev.add-button` switches to `main-ddev`, whose tab bar
+  shows a DDEV button after Changes that toggles a side panel with the list;
+  `herdr-app do ddev.remove-button` returns to the previous layout and the clones are gone.

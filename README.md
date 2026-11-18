@@ -42,11 +42,36 @@ Open it as a popup with the `mod.open:ddev` command, or as a side pane with
 "ctrl-shift-d": "mod.open:ddev"
 ```
 
+## A button in the tab bar
+
+To get a **DDEV** button next to Files and Changes, open the mod once (the popup is
+enough) and run:
+
+```sh
+herdr-app do ddev.add-button
+```
+
+Herdr's own `main` layout and `tabs` mod are read-only, so this clones them as
+`main-ddev` and `tabs-ddev`, adds the button and a DDEV side panel to the clones and
+switches the window to the layout `main-ddev`. `ctrl-shift-l` switches back. To undo:
+
+```sh
+herdr-app do ddev.remove-button
+```
+
+It deletes the two clones and returns to the layout you came from. The clones are yours and
+Herdr never updates them, so after a Herdr release that changes the tab bar or the main
+layout, run `remove-button` and then `add-button`. If you already use a cloned layout
+with other buttons, add the DDEV block to its `panel-body` and the button to its tab bar
+by hand; `mods/ddev/setup.js` shows the two small patches.
+
 ## What it runs and reads
 
 Mods are trusted code, so for the record: `ddev list -j`, `ddev describe <name> -j`
 (every 10 seconds while open), `ddev start|stop` in a project's folder on click and
-`xdg-open <url>` on click. No network access of its own and nothing is written to disk.
+`xdg-open <url>` on click. No network access of its own. The only files it writes are the
+ones `ddev.add-button` and `ddev.remove-button` create or delete (`layouts/main-ddev.json`,
+`mods/tabs-ddev/` and `data/ddev/previous-layout.txt`, all under `~/.config/herdr-app`).
 
 ## License
 
