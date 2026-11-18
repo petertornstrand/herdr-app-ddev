@@ -3,6 +3,8 @@
 See which DDEV projects are running, start or stop one with a click, and read what
 `ddev describe` says about it, in a popup or a side pane of the Herdr app.
 
+![Herdr DDEV](preview.png)
+
 ## What you see
 
 A single column, themed with Herdr's `theme()` colors, on `surface`. As a popup it is

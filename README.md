@@ -3,6 +3,8 @@
 A [Herdr app](https://herdr.dev) mod that shows the status of your [DDEV](https://ddev.com)
 projects and starts or stops them with one click.
 
+![Herdr DDEV](preview.png)
+
 - Lists every project from `ddev list`, with a status dot and its location.
 - The project of the focused terminal's folder comes first and is highlighted, then
   running projects, then the rest.
@@ -13,6 +15,10 @@ projects and starts or stops them with one click.
 - Click a project's name for what `ddev describe` says: type, PHP, web server, database,
   Node.js, router, performance mode, URLs (clickable when running), database connection
   details and services with their status and image. The database password is not shown.
+
+![The describe view](docs/describe.png)
+
+The screenshots use made-up projects.
 
 ## Install
 
