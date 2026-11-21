@@ -7,10 +7,12 @@
 // polled gently while a copy is open.
 //   herdr-app do ddev.add-button           a DDEV button in the tab bar (see setup.js)
 //   herdr-app do ddev.remove-button        take it away again
+//   herdr-app do ddev.update-check-off     never look for a newer DDEV mod (update-check-on: again)
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { exec, focused, notify, theme, checking, props, nextCommand } from "herdr";
+import { exec, focused, notify, theme, checking, props, nextCommand, agents, hc } from "herdr";
 import { addButton, removeButton } from "./setup.js";
+import { newer, installedVersion, checkUpdate, setUpdateCheck, updatePrompt } from "./update.js";
 
 const POLL = 10000;
 const START_TIMEOUT = 600000; // exec's cap: ddev start can pull images
@@ -54,11 +56,53 @@ export default class Ddev extends View {
     if (checking()) return;
     this.refresh(cx);
     cx.timer.every(POLL, (cx) => { this.refresh(cx); this.loadDetail(cx); });
+    // A newer DDEV mod on GitHub (update.js): looked for now and every 6 hours; the
+    // answer is shared, so GitHub is asked at most once a day.
+    this.version = null;
+    this.latest = null;
+    this.lookForUpdate = (cx) => cx.spawn(async (cx) => {
+      try {
+        this.version ??= await installedVersion();
+        const { latest } = await checkUpdate();
+        if (latest !== this.latest) {
+          this.latest = latest;
+          cx.notify();
+        }
+      } catch (_) {}
+    });
+    this.lookForUpdate(cx);
+    cx.timer.every(6 * 3600000, (cx) => this.lookForUpdate(cx));
     // Key and `herdr-app do ddev.<command>` commands reach the shown copies.
     cx.spawn(async (cx) => {
       for (;;) {
         const c = await nextCommand();
         if (c === "add-button" || c === "remove-button") this.setup(c, cx);
+        else if (c === "update-check-off") {
+          setUpdateCheck(false);
+          this.latest = null;
+          cx.notify();
+        } else if (c === "update-check-on") {
+          setUpdateCheck(true);
+          this.lookForUpdate(cx);
+        }
+      }
+    });
+  }
+
+  /** The update banner's button: the focused agent does the update, so it reads the new files before they go in. */
+  askUpdate(cx) {
+    const agent = agents().find((a) => a.focused);
+    if (!agent) {
+      notify({ title: `DDEV ${this.latest}`, body: "Focus an agent's terminal and click again, or ask any agent to update the DDEV mod.", level: "info", timeout: 8000 });
+      return;
+    }
+    cx.spawn(async () => {
+      try {
+        const r = await hc(["send", agent.address, updatePrompt(this.latest, this.version)]);
+        if (r.code !== 0) throw new Error((r.stderr || r.stdout || `hc send ${r.code}`).trim());
+        notify({ title: "Asked the agent to update DDEV", body: `${this.version ?? "?"} → ${this.latest}`, level: "success", timeout: 5000 });
+      } catch (err) {
+        notify({ title: "Couldn't reach the agent", body: String(err?.message ?? err), level: "error" });
       }
     });
   }
@@ -276,8 +320,15 @@ export default class Ddev extends View {
         : v_flex().id("ddev-list").flex_1().min_h(0).overflow_y_scrollbar().children(sorted.map(row));
     }
 
+    // A newer version on GitHub (update.js).
+    const update = this.latest && newer(this.latest, this.version)
+      ? h_flex().flex_none().px(12).py(6).gap(8).items_center().border_b(1).border_color(t.border).bg(t.raised)
+        .child(div().flex_1().min_w(0).text_size(12).text_color(t.muted).child(`DDEV ${this.latest} is out (you have ${this.version ?? "?"}).`))
+        .child(button("update", "Update", (cx) => this.askUpdate(cx), true))
+      : null;
+
     // A popup sizes to its content, so give it a definite height; a pane fills its block.
     const root = props()?.overlay ? v_flex().w_full().h(560) : v_flex().size_full();
-    return root.bg(t.surface).child(header).child(body);
+    return root.bg(t.surface).child(header).when(Boolean(update), (el) => el.child(update)).child(body);
   }
 }

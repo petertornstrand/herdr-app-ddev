@@ -58,15 +58,25 @@ describe info). Rows with no value are left out.
 
 ## Built from
 
-- `mods/ddev/mod.json`: `{ "place": "none", "title": "DDEV", "overlay": { "kind": "popup",
+- `mods/ddev/mod.json`: `{ "place": "none", "title": "DDEV", "version": "1.0.0", "overlay": { "kind": "popup",
   "at": "top", "offset": 40, "width": 480, "height": 560 } }`.
 - `mods/ddev/icon.svg`: a 16 px stroked database cylinder (three stacked bands), `stroke="#000"`
   so Herdr tints it with the text color.
 - `mods/ddev/setup.js`: `addButton(wait)` / `removeButton(wait)` and the pure `patchTabs()` and
   `patchLayout()`, using `fs/promises` and `run("mod.clone" | "layout.switch")`.
+- `mods/ddev/update.js` (from the Human mod, which took it from Blueprint): `mod.json` carries a
+  `version`. At most once a day, one copy fetches
+  `https://raw.githubusercontent.com/petertornstrand/herdr-app-ddev/main/mods/ddev/mod.json`
+  and shares `{checked, latest, error, off}` in shared state under `ddev.update`; a failed
+  request is retried after an hour. If `latest` is newer (dotted numbers, junk is never
+  newer), a banner (`raised`, bottom border, 12 px `muted` text "DDEV X is out (you have
+  Y).", an accent `Update` button) shows under the header. The button sends the focused
+  agent a prompt to replace `mods/ddev` from the repo, run `herdr-app check` and report the
+  changes; with no focused agent it explains how. `herdr-app do ddev.update-check-off` /
+  `update-check-on` switch the check. This is the mod's only network call.
 - `mods/ddev/main.js`: one `View` subclass. `gpui-kit` (`View`, `div`, `svg`), `gpui-base`
   (`v_flex`, `h_flex`) and `herdr` (`exec`, `focused`, `notify`, `theme`, `checking`,
-  `props`). Scrolling lists use `.id(...).flex_1().min_h(0).overflow_y_scrollbar()`.
+  `props`, `nextCommand`, `agents`, `hc`). Scrolling lists use `.id(...).flex_1().min_h(0).overflow_y_scrollbar()`.
 - Data: `exec("ddev", ["list", "-j"])` and `exec("ddev", ["describe", name, "-j"])`. The JSON is
   the last stdout line starting with `{`; the payload is its `raw` field. List fields used:
   `name`, `status`, `approot`, `shortroot`, `type`, `primary_url`. Describe fields: `status`,
@@ -109,6 +119,9 @@ describe info). Rows with no value are left out.
   returns to the list; a stopped project shows no host port; a project without
   `.ddev/config.yaml` shows ddev's error.
 - No database password appears anywhere.
+- When `version` in the repository's `mods/ddev/mod.json` is higher than the installed one, a
+  banner "DDEV X is out (you have Y)." with an Update button shows under the header; with
+  `herdr-app do ddev.update-check-off` it never shows.
 - With a DDEV popup open, `herdr-app do ddev.add-button` switches to `main-ddev`, whose tab bar
   shows a DDEV button after Changes that toggles a side panel with the list;
   `herdr-app do ddev.remove-button` returns to the previous layout and the clones are gone.

@@ -69,9 +69,18 @@ by hand; `mods/ddev/setup.js` shows the two small patches.
 
 Mods are trusted code, so for the record: `ddev list -j`, `ddev describe <name> -j`
 (every 10 seconds while open), `ddev start|stop` in a project's folder on click and
-`xdg-open <url>` on click. No network access of its own. The only files it writes are the
+`xdg-open <url>` on click. Its one network call is the daily update check (see Updates). The only files it writes are the
 ones `ddev.add-button` and `ddev.remove-button` create or delete (`layouts/main-ddev.json`,
 `mods/tabs-ddev/` and `data/ddev/previous-layout.txt`, all under `~/.config/herdr-app`).
+
+## Updates
+
+At most once a day the mod reads `version` in this repository's `mods/ddev/mod.json` (one
+GET to `raw.githubusercontent.com`; nothing is sent but the request). If it is newer than
+the installed one, a banner with an **Update** button shows under the header. The button
+asks the focused agent to read the new files and replace the mod, run `herdr-app check`
+and tell you what changed. Nothing is updated without an agent reading it first. To stop
+the daily check: `herdr-app do ddev.update-check-off` (`update-check-on` brings it back).
 
 ## License
 
